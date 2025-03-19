@@ -141,6 +141,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ label, accept, onChange, fileTy
 };
 
 const SyncFirebaseContent: React.FC = () => {
+  const { user } = useAuth();
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -151,11 +152,17 @@ const SyncFirebaseContent: React.FC = () => {
     setSyncError(null);
 
     try {
+      // Check if user is logged in
+      if (!user) {
+        throw new Error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
+      }
+
       const response = await fetch('/api/admin/sync-firebase', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       });
 
       const data = await response.json();

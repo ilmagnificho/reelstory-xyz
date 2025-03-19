@@ -18,7 +18,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     if (!user) {
       console.log('Unauthorized: No user found in session');
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized: Please log in to access this feature' });
+    }
+    
+    // Check if we're in development mode
+    const isDev = process.env.NODE_ENV === 'development';
+    console.log(`Environment: ${process.env.NODE_ENV}, isDev: ${isDev}`);
+    
+    // In production, we might want to check if the user has admin role
+    if (!isDev) {
+      // Get user details from database to check role
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+      });
+      
+      // If we had a role field, we would check it here
+      // if (!dbUser || dbUser.role !== 'admin') {
+      //   console.log('Unauthorized: User does not have admin privileges');
+      //   return res.status(403).json({ error: 'Forbidden: Admin privileges required' });
+      // }
     }
     
     // 여기서 관리자 권한 확인 로직을 추가할 수 있습니다

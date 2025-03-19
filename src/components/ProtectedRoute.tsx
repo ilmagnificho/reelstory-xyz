@@ -14,7 +14,7 @@ const publicRoutes = [
 ];
 
 // Development mode flag - allows bypassing authentication for testing
-const DEV_MODE = process.env.NODE_ENV === 'development' || true;
+const DEV_MODE = process.env.NODE_ENV === 'development';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, initializing } = useContext(AuthContext);
