@@ -12,8 +12,9 @@ import Head from 'next/head';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle2, Upload } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Upload, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import prisma from '@/lib/prisma';
 
 interface Drama {
@@ -139,6 +140,103 @@ const FileUpload: React.FC<FileUploadProps> = ({ label, accept, onChange, fileTy
   );
 };
 
+const SyncFirebaseContent: React.FC = () => {
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const handleSyncFirebase = async () => {
+    setSyncLoading(true);
+    setSyncResult(null);
+    setSyncError(null);
+
+    try {
+      const response = await fetch('/api/admin/sync-firebase', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '동기화 중 오류가 발생했습니다');
+      }
+
+      setSyncResult(data);
+    } catch (error) {
+      console.error('Error syncing with Firebase:', error);
+      setSyncError((error as Error).message || '동기화 중 오류가 발생했습니다');
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Firebase Storage 동기화</CardTitle>
+        <CardDescription>
+          Firebase Storage에 업로드된 비디오를 자동으로 서비스에 추가합니다
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          이 기능은 Firebase Storage의 <code>videos</code> 폴더에 있는 모든 비디오 파일을 검색하고, 
+          아직 데이터베이스에 등록되지 않은 비디오를 자동으로 추가합니다.
+        </p>
+        
+        <Button 
+          onClick={handleSyncFirebase} 
+          disabled={syncLoading}
+          className="w-full"
+        >
+          {syncLoading ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              동기화 중...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Firebase Storage 동기화
+            </>
+          )}
+        </Button>
+        
+        {syncResult && (
+          <Alert className="bg-green-50 border-green-200 text-green-800">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertTitle>동기화 완료</AlertTitle>
+            <AlertDescription>
+              <p>{syncResult.message}</p>
+              {syncResult.results.added.length > 0 && (
+                <div className="mt-2">
+                  <p className="font-semibold">추가된 비디오:</p>
+                  <ul className="list-disc pl-5 text-sm">
+                    {syncResult.results.added.map((item: any, index: number) => (
+                      <li key={index}>{item.title}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {syncError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>오류</AlertTitle>
+            <AlertDescription>{syncError}</AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const UploadPage: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
@@ -255,116 +353,131 @@ const UploadPage: React.FC = () => {
         <title>관리자 - 비디오 업로드</title>
       </Head>
       <div className="container max-w-2xl py-10">
-        <Card>
-          <CardHeader>
-            <CardTitle>새 에피소드 업로드</CardTitle>
-            <CardDescription>
-              새로운 K-드라마 에피소드를 플랫폼에 추가합니다
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">에피소드 제목</Label>
-                <Input
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">설명</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <FileUpload
-                label="비디오 파일"
-                accept="video/*"
-                onChange={handleVideoUrlChange}
-                fileType="video"
-              />
-              
-              <FileUpload
-                label="썸네일 이미지"
-                accept="image/*"
-                onChange={handleThumbnailUrlChange}
-                fileType="image"
-              />
-              
-              <div className="space-y-2">
-                <Label htmlFor="duration">재생 시간 (초)</Label>
-                <Input
-                  id="duration"
-                  name="duration"
-                  type="number"
-                  min="1"
-                  value={formData.duration}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="drama">드라마</Label>
-                <Select
-                  value={formData.dramaId}
-                  onValueChange={handleDramaChange}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="드라마 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dramas.map(drama => (
-                      <SelectItem key={drama.id} value={drama.id}>
-                        {drama.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="isPremium"
-                  checked={formData.isPremium}
-                  onCheckedChange={handleSwitchChange}
-                />
-                <Label htmlFor="isPremium">프리미엄 콘텐츠</Label>
-              </div>
-              
-              {success && (
-                <Alert className="bg-green-50 border-green-200 text-green-800">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertTitle>성공</AlertTitle>
-                  <AlertDescription>에피소드가 성공적으로 추가되었습니다!</AlertDescription>
-                </Alert>
-              )}
-              
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>오류</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? '업로드 중...' : '에피소드 업로드'}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+        <h1 className="text-3xl font-bold mb-6">관리자 페이지</h1>
+        
+        <Tabs defaultValue="upload" className="mb-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="upload">수동 업로드</TabsTrigger>
+            <TabsTrigger value="sync">Firebase 동기화</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="upload">
+            <Card>
+              <CardHeader>
+                <CardTitle>새 에피소드 업로드</CardTitle>
+                <CardDescription>
+                  새로운 K-드라마 에피소드를 플랫폼에 추가합니다
+                </CardDescription>
+              </CardHeader>
+              <form onSubmit={handleSubmit}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">에피소드 제목</Label>
+                    <Input
+                      id="title"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="description">설명</Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      value={formData.description}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  
+                  <FileUpload
+                    label="비디오 파일"
+                    accept="video/*"
+                    onChange={handleVideoUrlChange}
+                    fileType="video"
+                  />
+                  
+                  <FileUpload
+                    label="썸네일 이미지"
+                    accept="image/*"
+                    onChange={handleThumbnailUrlChange}
+                    fileType="image"
+                  />
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="duration">재생 시간 (초)</Label>
+                    <Input
+                      id="duration"
+                      name="duration"
+                      type="number"
+                      min="1"
+                      value={formData.duration}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="drama">드라마</Label>
+                    <Select
+                      value={formData.dramaId}
+                      onValueChange={handleDramaChange}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="드라마 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dramas.map(drama => (
+                          <SelectItem key={drama.id} value={drama.id}>
+                            {drama.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="isPremium"
+                      checked={formData.isPremium}
+                      onCheckedChange={handleSwitchChange}
+                    />
+                    <Label htmlFor="isPremium">프리미엄 콘텐츠</Label>
+                  </div>
+                  
+                  {success && (
+                    <Alert className="bg-green-50 border-green-200 text-green-800">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <AlertTitle>성공</AlertTitle>
+                      <AlertDescription>에피소드가 성공적으로 추가되었습니다!</AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>오류</AlertTitle>
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" disabled={isLoading} className="w-full">
+                    {isLoading ? '업로드 중...' : '에피소드 업로드'}
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="sync">
+            <SyncFirebaseContent />
+          </TabsContent>
+        </Tabs>
       </div>
     </>
   );
