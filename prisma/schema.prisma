@@ -14,6 +14,7 @@ model User {
   email      String   @unique
   createdAt  DateTime @default(now())
   favorites  Favorite[]
+  isAdmin    Boolean  @default(false)
 }
 
 model Drama {

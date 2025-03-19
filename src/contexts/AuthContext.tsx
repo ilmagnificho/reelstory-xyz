@@ -68,14 +68,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw error;
       }
       if (!data) {
+        // Check if this is the first user in the system
+        const { data: usersCount, error: countError } = await supabase
+          .from('User')
+          .select('id', { count: 'exact', head: true });
+        
+        if (countError) {
+          console.error('Error checking users count:', countError);
+        }
+        
+        // If this is the first user, make them an admin
+        const isFirstUser = !countError && usersCount?.length === 0;
+        
         const { error: insertError } = await supabase
           .from('User')
           .insert({
             id: user.id,
             email: user.email,
+            isAdmin: isFirstUser, // First user becomes admin
           });
         if (insertError) {
           throw insertError;
+        }
+        
+        if (isFirstUser) {
+          toast({
+            title: "Admin Account Created",
+            description: "You've been set up as the first admin user",
+          });
         }
       }
     } catch (error) {

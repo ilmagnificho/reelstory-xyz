@@ -247,6 +247,40 @@ const SyncFirebaseContent: React.FC = () => {
 const UploadPage: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) {
+        router.push('/login?redirect=/admin/upload');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/admin/check-admin', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          setIsAdmin(true);
+        } else {
+          router.push('/');
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        router.push('/');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, [user, router]);
   const [dramas, setDramas] = useState<Drama[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
