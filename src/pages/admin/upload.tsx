@@ -245,19 +245,27 @@ const SyncFirebaseContent: React.FC = () => {
 };
 
 const UploadPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, initializing } = useAuth();
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
+      // Don't do anything while authentication is initializing
+      if (initializing) {
+        return;
+      }
+      
+      // If user is not logged in, redirect to login
       if (!user) {
+        console.log('No user found, redirecting to login');
         router.push('/login?redirect=/admin/upload');
         return;
       }
 
       try {
+        console.log('Checking admin status for user:', user.id);
         const response = await fetch('/api/admin/check-admin', {
           method: 'GET',
           headers: {
@@ -267,8 +275,10 @@ const UploadPage: React.FC = () => {
         });
 
         if (response.ok) {
+          console.log('User is admin, allowing access');
           setIsAdmin(true);
         } else {
+          console.log('User is not admin, redirecting to home');
           router.push('/');
         }
       } catch (error) {
@@ -280,7 +290,7 @@ const UploadPage: React.FC = () => {
     };
 
     checkAdminStatus();
-  }, [user, router]);
+  }, [user, initializing, router]);
   const [dramas, setDramas] = useState<Drama[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);

@@ -16,6 +16,11 @@ const publicRoutes = [
 // Development mode flag - allows bypassing authentication for testing
 const DEV_MODE = process.env.NODE_ENV === 'development';
 
+// Check if a route is an admin route
+const isAdminRoute = (path: string) => {
+  return path.startsWith('/admin');
+};
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, initializing } = useContext(AuthContext);
   const router = useRouter();
@@ -24,9 +29,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     // Skip during initial loading or if in development mode
     if (initializing || DEV_MODE) return;
     
+    // If user is not logged in and trying to access a protected route
     if (!user && !publicRoutes.includes(router.pathname)) {
-      router.push('/login');
+      console.log('User not authenticated, redirecting to login');
+      // Save the intended destination for redirect after login
+      const redirectPath = encodeURIComponent(router.asPath);
+      router.push(`/login?redirect=${redirectPath}`);
     }
+    
+    // Admin routes are handled separately in their respective pages
+    // This prevents redirect loops by not handling admin authorization here
   }, [user, initializing, router]);
 
   if (initializing) {

@@ -2,6 +2,7 @@ import { useFormik } from 'formik';
 import React, { useContext, useState, useEffect } from 'react';
 import * as Yup from 'yup';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { AuthContext } from '@/contexts/AuthContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import GoogleButton from '@/components/GoogleButton';
@@ -16,6 +17,8 @@ import { useIsIFrame } from '@/hooks/useIsIFrame';
 
 const LoginPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams?.get('redirect') || '/dashboard';
   const { initializing, signIn } = useContext(AuthContext);
   const [showPw, setShowPw] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +31,8 @@ const LoginPage = () => {
     try {
       const { email, password } = formik.values;
       await signIn(email, password);
-      router.push('/dashboard');
+      console.log('Login successful, redirecting to:', redirectPath);
+      router.push(redirectPath);
     } catch (error) {
       console.error(error);
       toast({
