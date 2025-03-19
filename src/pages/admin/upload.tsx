@@ -118,7 +118,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ label, accept, onChange, fileTy
         )}
         
         {url && (
-          <Alert variant="success" className="bg-green-50 border-green-200 text-green-800">
+          <Alert className="bg-green-50 border-green-200 text-green-800">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             <AlertTitle>업로드 완료</AlertTitle>
             <AlertDescription className="text-xs break-all">
@@ -343,7 +343,7 @@ const UploadPage: React.FC = () => {
               </div>
               
               {success && (
-                <Alert variant="success" className="bg-green-50 border-green-200 text-green-800">
+                <Alert className="bg-green-50 border-green-200 text-green-800">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                   <AlertTitle>성공</AlertTitle>
                   <AlertDescription>에피소드가 성공적으로 추가되었습니다!</AlertDescription>
