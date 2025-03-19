@@ -20,7 +20,7 @@ model Drama {
   id          String    @id @default(uuid())
   title       String
   description String
-  thumbnailUrl String
+  imageUrl    String?
   episodes    Episode[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
