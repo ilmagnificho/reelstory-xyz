@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -6,19 +6,48 @@ import { useRouter } from "next/router";
 import Image from "next/image";
 import { useLanguage } from "@/contexts/LanguageContext";
 import LanguageSelector from "@/components/LanguageSelector";
+import VerticalVideoPlayer from "@/components/VerticalVideoPlayer";
 
 export default function Home() {
   const router = useRouter();
   const { t } = useLanguage();
+  const [showVideo, setShowVideo] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<null | {
+    videoUrl: string;
+    thumbnailUrl: string;
+    title: string;
+    isPremium: boolean;
+  }>(null);
 
-  // Automatically redirect to videos page for immediate viewing
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      router.push('/videos');
-    }, 1000); // Short delay to allow the page to render
+  // Sample videos for the homepage
+  const featuredVideos = [
+    {
+      id: "1",
+      videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-young-woman-waving-her-hand-1228-large.mp4",
+      thumbnailUrl: "https://assets.co.dev/95da6205-c8dc-42ac-a273-7db27ca3519d/image-f513fef.png",
+      title: "Crash Landing on You - First Meeting",
+      isPremium: false
+    },
+    {
+      id: "2",
+      videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-couple-holding-hands-on-the-beach-1544-large.mp4",
+      thumbnailUrl: "https://assets.co.dev/95da6205-c8dc-42ac-a273-7db27ca3519d/image-f513fef.png",
+      title: "Goblin - The Confession",
+      isPremium: false
+    },
+    {
+      id: "3",
+      videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-man-under-multicolored-lights-1237-large.mp4",
+      thumbnailUrl: "https://assets.co.dev/95da6205-c8dc-42ac-a273-7db27ca3519d/image-f513fef.png",
+      title: "Itaewon Class - The Kiss",
+      isPremium: false
+    }
+  ];
 
-    return () => clearTimeout(timer);
-  }, [router]);
+  const handleVideoClick = (video: typeof featuredVideos[0]) => {
+    setSelectedVideo(video);
+    setShowVideo(true);
+  };
 
   return (
     <>
@@ -46,16 +75,27 @@ export default function Home() {
               </p>
             </div>
             
-            <div className="relative w-full aspect-[9/16] mb-8 rounded-xl overflow-hidden shadow-xl">
-              <Image 
-                src="https://assets.co.dev/95da6205-c8dc-42ac-a273-7db27ca3519d/image-f513fef.png" 
-                alt="K-drama preview" 
-                fill 
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6">
-                <h2 className="text-white text-xl font-bold mb-2">Discover Korean Dramas</h2>
-                <p className="text-white/90 mb-4">Short clips from your favorite K-dramas</p>
+            {/* Featured Videos Section */}
+            <div className="mb-8">
+              <h2 className="text-xl font-bold mb-4 text-left">{t('featuredVideos')}</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {featuredVideos.map((video) => (
+                  <div 
+                    key={video.id} 
+                    className="relative aspect-[9/16] rounded-lg overflow-hidden cursor-pointer"
+                    onClick={() => handleVideoClick(video)}
+                  >
+                    <Image 
+                      src={video.thumbnailUrl} 
+                      alt={video.title} 
+                      fill 
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3">
+                      <h3 className="text-white text-sm font-medium">{video.title}</h3>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
             
@@ -93,6 +133,31 @@ export default function Home() {
             </div>
           </div>
         </main>
+        
+        {/* Fullscreen Video Modal */}
+        {showVideo && selectedVideo && (
+          <div className="fixed inset-0 z-50 bg-black">
+            <div className="absolute top-4 right-4 z-50">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-white hover:bg-white/20"
+                onClick={() => setShowVideo(false)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </Button>
+            </div>
+            <div className="h-full w-full">
+              <VerticalVideoPlayer
+                videoUrl={selectedVideo.videoUrl}
+                thumbnailUrl={selectedVideo.thumbnailUrl}
+                title={selectedVideo.title}
+                isPremium={selectedVideo.isPremium}
+                onPremiumClick={() => router.push('/signup')}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

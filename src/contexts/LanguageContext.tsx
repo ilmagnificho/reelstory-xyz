@@ -25,6 +25,7 @@ const translations: Translations = {
     alreadyHaveAccount: "アカウントをお持ちの方はログイン",
     watchNow: "今すぐ見る",
     skipLogin: "ログインをスキップ",
+    featuredVideos: "おすすめ動画",
   },
   en: {
     trending: "Trending",
@@ -40,6 +41,7 @@ const translations: Translations = {
     alreadyHaveAccount: "Already have an account? Log in",
     watchNow: "Watch Now",
     skipLogin: "Skip Login",
+    featuredVideos: "Featured Videos",
   },
   ko: {
     trending: "인기",
@@ -55,6 +57,7 @@ const translations: Translations = {
     alreadyHaveAccount: "이미 계정이 있으신가요? 로그인",
     watchNow: "지금 보기",
     skipLogin: "로그인 건너뛰기",
+    featuredVideos: "추천 비디오",
   }
 };
 

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Volume2, VolumeX, Lock } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Lock, Maximize, Minimize } from "lucide-react";
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface VerticalVideoPlayerProps {
@@ -22,7 +22,9 @@ const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const togglePlay = () => {
@@ -45,6 +47,26 @@ const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
+    }
+  };
+  
+  const toggleFullscreen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!playerContainerRef.current) return;
+    
+    if (!document.fullscreenElement) {
+      playerContainerRef.current.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsFullscreen(false);
+      }).catch(err => {
+        console.error(`Error attempting to exit fullscreen: ${err.message}`);
+      });
     }
   };
 
@@ -113,6 +135,7 @@ const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
 
   return (
     <div 
+      ref={playerContainerRef}
       className="relative w-full h-full bg-black overflow-hidden"
       onClick={showControls}
       onTouchStart={showControls}
@@ -173,6 +196,14 @@ const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
             }}
           >
             {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-white hover:bg-white/20 h-10 w-10"
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
           </Button>
         </div>
       </div>
