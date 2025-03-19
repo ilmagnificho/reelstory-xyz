@@ -1,12 +1,24 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Head from "next/head";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/router";
 import Image from "next/image";
+import { useLanguage } from "@/contexts/LanguageContext";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function Home() {
   const router = useRouter();
+  const { t } = useLanguage();
+
+  // Automatically redirect to videos page for immediate viewing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.push('/videos');
+    }, 1000); // Short delay to allow the page to render
+
+    return () => clearTimeout(timer);
+  }, [router]);
 
   return (
     <>
@@ -17,7 +29,12 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <div className="bg-background min-h-screen flex flex-col">
-        <Header />
+        <header className="p-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+            ReelStory
+          </h1>
+          <LanguageSelector />
+        </header>
         <main className="flex-1 flex flex-col items-center justify-center p-4">
           <div className="max-w-md w-full mx-auto text-center">
             <div className="mb-6">
@@ -31,7 +48,7 @@ export default function Home() {
             
             <div className="relative w-full aspect-[9/16] mb-8 rounded-xl overflow-hidden shadow-xl">
               <Image 
-                src="/images/rect.png" 
+                src="https://assets.co.dev/95da6205-c8dc-42ac-a273-7db27ca3519d/image-f513fef.png" 
                 alt="K-drama preview" 
                 fill 
                 className="object-cover"
@@ -46,9 +63,9 @@ export default function Home() {
               <Button 
                 className="w-full text-lg py-6" 
                 size="lg"
-                onClick={() => router.push('/signup')}
+                onClick={() => router.push('/videos')}
               >
-                Get Started
+                {t('watchNow')}
               </Button>
               <Button 
                 variant="outline" 
@@ -56,7 +73,7 @@ export default function Home() {
                 size="lg"
                 onClick={() => router.push('/login')}
               >
-                Already have an account? Log in
+                {t('alreadyHaveAccount')}
               </Button>
             </div>
             
