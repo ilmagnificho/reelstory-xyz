@@ -1,4 +1,4 @@
-import { useContext, useEffect } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { AuthContext } from '@/contexts/AuthContext';
 
@@ -10,7 +10,8 @@ const publicRoutes = [
   '/forgot-password', 
   '/magic-link-login',
   '/videos', // New public route for video browsing
-  '/dashboard' // Allow dashboard access for development
+  '/dashboard', // Allow dashboard access for development
+  '/auth/callback' // Add callback route to prevent redirect loops
 ];
 
 // Development mode flag - allows bypassing authentication for testing
@@ -24,22 +25,32 @@ const isAdminRoute = (path: string) => {
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, initializing } = useContext(AuthContext);
   const router = useRouter();
+  const [redirectAttempted, setRedirectAttempted] = useState(false);
 
   useEffect(() => {
     // Skip during initial loading or if in development mode
     if (initializing || DEV_MODE) return;
     
+    // Prevent redirect loops by checking if we've already attempted a redirect
+    if (redirectAttempted) return;
+    
     // If user is not logged in and trying to access a protected route
-    if (!user && !publicRoutes.includes(router.pathname)) {
+    if (!user && !publicRoutes.includes(router.pathname) && !router.pathname.includes('/auth/')) {
       console.log('User not authenticated, redirecting to login');
       // Save the intended destination for redirect after login
       const redirectPath = encodeURIComponent(router.asPath);
+      setRedirectAttempted(true);
       router.push(`/login?redirect=${redirectPath}`);
     }
     
     // Admin routes are handled separately in their respective pages
     // This prevents redirect loops by not handling admin authorization here
-  }, [user, initializing, router]);
+  }, [user, initializing, router, redirectAttempted]);
+
+  // Reset redirect flag when route changes
+  useEffect(() => {
+    setRedirectAttempted(false);
+  }, [router.pathname]);
 
   if (initializing) {
     return (
@@ -50,8 +61,17 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   // For public routes, authenticated users, or dev mode, render children
-  if (DEV_MODE || user || publicRoutes.includes(router.pathname)) {
+  if (DEV_MODE || user || publicRoutes.includes(router.pathname) || router.pathname.includes('/auth/')) {
     return <>{children}</>;
+  }
+
+  // If we're in a redirect state, show loading
+  if (redirectAttempted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    );
   }
 
   return null;

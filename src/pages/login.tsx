@@ -32,7 +32,11 @@ const LoginPage = () => {
       const { email, password } = formik.values;
       await signIn(email, password);
       console.log('Login successful, redirecting to:', redirectPath);
-      router.push(redirectPath);
+      
+      // Add a small delay before redirecting to ensure auth state is updated
+      setTimeout(() => {
+        router.push(redirectPath);
+      }, 500);
     } catch (error) {
       console.error(error);
       toast({
@@ -40,7 +44,6 @@ const LoginPage = () => {
         title: "Login failed",
         description: "Please check your credentials and try again.",
       });
-    } finally {
       setIsLoading(false);
     }
   }

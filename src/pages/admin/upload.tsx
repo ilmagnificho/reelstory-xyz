@@ -56,7 +56,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ label, accept, onChange, fileTy
 
     try {
       // Firebase Storage에 파일 업로드
-      const storageRef = ref(storage, `${fileType}s/${Date.now()}-${file.name}`);
+      const timestamp = Date.now();
+      const fileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_'); // 파일명 안전하게 변경
+      const storageRef = ref(storage, `${fileType}s/${timestamp}-${fileName}`);
+      
+      console.log(`Uploading ${fileType} to Firebase Storage:`, storageRef);
+      
       const uploadTask = uploadBytesResumable(storageRef, file);
 
       uploadTask.on(
@@ -64,25 +69,53 @@ const FileUpload: React.FC<FileUploadProps> = ({ label, accept, onChange, fileTy
         (snapshot) => {
           // 업로드 진행 상황 업데이트
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log(`Upload progress: ${progress.toFixed(2)}%`);
           setProgress(progress);
         },
-        (error) => {
+        (error: any) => {
           // 업로드 에러 처리
           console.error('Upload error:', error);
-          setError('파일 업로드 중 오류가 발생했습니다');
+          let errorMessage = '파일 업로드 중 오류가 발생했습니다';
+          
+          // Firebase 에러 코드에 따른 상세 메시지
+          if (error.code) {
+            switch (error.code) {
+              case 'storage/unauthorized':
+                errorMessage = '권한이 없습니다. 관리자 권한을 확인해주세요.';
+                break;
+              case 'storage/canceled':
+                errorMessage = '업로드가 취소되었습니다.';
+                break;
+              case 'storage/unknown':
+                errorMessage = '알 수 없는 오류가 발생했습니다.';
+                break;
+              default:
+                errorMessage = `업로드 오류: ${error.code}`;
+            }
+          }
+          
+          setError(errorMessage);
           setUploading(false);
         },
         async () => {
           // 업로드 완료 후 다운로드 URL 가져오기
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          setUrl(downloadUrl);
-          onChange(downloadUrl);
-          setUploading(false);
+          try {
+            console.log('Upload completed, getting download URL...');
+            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            console.log('Download URL:', downloadUrl);
+            setUrl(downloadUrl);
+            onChange(downloadUrl);
+          } catch (urlError) {
+            console.error('Error getting download URL:', urlError);
+            setError('파일 URL을 가져오는 중 오류가 발생했습니다');
+          } finally {
+            setUploading(false);
+          }
         }
       );
     } catch (error) {
-      console.error('Upload error:', error);
-      setError('파일 업로드 중 오류가 발생했습니다');
+      console.error('Upload initialization error:', error);
+      setError('파일 업로드를 시작할 수 없습니다. Firebase 설정을 확인해주세요.');
       setUploading(false);
     }
   };
@@ -266,6 +299,12 @@ const UploadPage: React.FC = () => {
 
       try {
         console.log('Checking admin status for user:', user.id);
+        
+        // For development purposes, you can uncomment this to bypass admin check
+        // setIsAdmin(true);
+        // setLoading(false);
+        // return;
+        
         const response = await fetch('/api/admin/check-admin', {
           method: 'GET',
           headers: {
@@ -274,11 +313,13 @@ const UploadPage: React.FC = () => {
           credentials: 'include',
         });
 
+        const data = await response.json();
+
         if (response.ok) {
           console.log('User is admin, allowing access');
           setIsAdmin(true);
         } else {
-          console.log('User is not admin, redirecting to home');
+          console.log('User is not admin, redirecting to home:', data.error);
           router.push('/');
         }
       } catch (error) {
