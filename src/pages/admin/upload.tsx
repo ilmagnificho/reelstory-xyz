@@ -178,11 +178,13 @@ const SyncFirebaseContent: React.FC = () => {
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   const handleSyncFirebase = async () => {
     setSyncLoading(true);
     setSyncResult(null);
     setSyncError(null);
+    setShowDetails(false);
 
     try {
       // Check if user is logged in
@@ -190,6 +192,8 @@ const SyncFirebaseContent: React.FC = () => {
         throw new Error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
       }
 
+      console.log('Starting Firebase sync process...');
+      
       const response = await fetch('/api/admin/sync-firebase', {
         method: 'POST',
         headers: {
@@ -201,9 +205,11 @@ const SyncFirebaseContent: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('Firebase sync API returned error:', data);
         throw new Error(data.error || '동기화 중 오류가 발생했습니다');
       }
 
+      console.log('Firebase sync completed successfully:', data);
       setSyncResult(data);
     } catch (error) {
       console.error('Error syncing with Firebase:', error);
@@ -222,10 +228,22 @@ const SyncFirebaseContent: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          이 기능은 Firebase Storage의 <code>videos</code> 폴더에 있는 모든 비디오 파일을 검색하고, 
-          아직 데이터베이스에 등록되지 않은 비디오를 자동으로 추가합니다.
-        </p>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            이 기능은 Firebase Storage의 <code>videos</code> 폴더에 있는 모든 비디오 파일을 검색하고, 
+            아직 데이터베이스에 등록되지 않은 비디오를 자동으로 추가합니다.
+          </p>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
+            <h4 className="font-semibold mb-1">Firebase Storage 폴더 구조 안내:</h4>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><code>videos/</code> - 비디오 파일을 이 폴더에 직접 업로드하세요.</li>
+              <li><code>images/</code> - 썸네일 이미지를 이 폴더에 업로드하세요. 비디오 파일과 같은 이름(확장자만 다름)으로 업로드하면 자동으로 연결됩니다.</li>
+              <li>예시: <code>videos/my-video.mp4</code>와 <code>images/my-video.jpg</code></li>
+            </ul>
+            <p className="mt-2">Firebase Storage에 직접 파일을 업로드한 후 아래 버튼을 클릭하여 동기화하세요.</p>
+          </div>
+        </div>
         
         <Button 
           onClick={handleSyncFirebase} 
@@ -251,14 +269,54 @@ const SyncFirebaseContent: React.FC = () => {
             <AlertTitle>동기화 완료</AlertTitle>
             <AlertDescription>
               <p>{syncResult.message}</p>
-              {syncResult.results.added.length > 0 && (
-                <div className="mt-2">
-                  <p className="font-semibold">추가된 비디오:</p>
-                  <ul className="list-disc pl-5 text-sm">
-                    {syncResult.results.added.map((item: any, index: number) => (
-                      <li key={index}>{item.title}</li>
-                    ))}
-                  </ul>
+              
+              <div className="mt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowDetails(!showDetails)}
+                  className="text-green-800 border-green-300 hover:bg-green-100"
+                >
+                  {showDetails ? '상세 정보 숨기기' : '상세 정보 보기'}
+                </Button>
+              </div>
+              
+              {showDetails && (
+                <div className="mt-4 space-y-4">
+                  {syncResult.results.added.length > 0 && (
+                    <div>
+                      <p className="font-semibold">추가된 비디오 ({syncResult.results.added.length}개):</p>
+                      <ul className="list-disc pl-5 text-sm">
+                        {syncResult.results.added.map((item: any, index: number) => (
+                          <li key={index}>{item.title} <span className="text-xs text-green-600">(파일명: {item.fileName})</span></li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {syncResult.results.existing.length > 0 && (
+                    <div>
+                      <p className="font-semibold">이미 등록된 비디오 ({syncResult.results.existing.length}개):</p>
+                      <ul className="list-disc pl-5 text-sm">
+                        {syncResult.results.existing.map((fileName: string, index: number) => (
+                          <li key={index}>{fileName}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {syncResult.results.errors.length > 0 && (
+                    <div>
+                      <p className="font-semibold text-red-600">오류 발생 ({syncResult.results.errors.length}개):</p>
+                      <ul className="list-disc pl-5 text-sm">
+                        {syncResult.results.errors.map((error: any, index: number) => (
+                          <li key={index}>
+                            {error.fileName}: <span className="text-red-600">{error.error}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
             </AlertDescription>
