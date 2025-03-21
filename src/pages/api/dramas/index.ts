@@ -47,7 +47,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
       }
       
-      // 여기서 관리자 권한 확인 로직을 추가할 수 있습니다
+      // 관리자 권한 확인
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+      });
+      
+      if (!dbUser || !dbUser.isAdmin) {
+        console.log('Unauthorized: User does not have admin privileges');
+        return res.status(403).json({ 
+          error: 'Forbidden', 
+          message: 'Admin privileges required',
+          details: 'Your account does not have administrator permissions'
+        });
+      }
       
       const { title, description, imageUrl } = req.body;
       

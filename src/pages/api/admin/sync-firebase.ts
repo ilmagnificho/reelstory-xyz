@@ -35,10 +35,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: 'Forbidden: Admin privileges required' });
     }
     
-    // 여기서 관리자 권한 확인 로직을 추가할 수 있습니다
-    // 예: 사용자의 role이 'admin'인지 확인
+    // Firebase Storage 설정 확인
+    console.log('Firebase Storage configuration:');
+    console.log(`- Project ID: ${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}`);
+    console.log(`- Storage Bucket: ${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}`);
+    
+    // 먼저 루트 폴더 확인
+    const rootRef = ref(storage, '');
+    console.log('Checking root folder access...');
+    try {
+      const rootList = await listAll(rootRef);
+      console.log(`Root folder contains ${rootList.prefixes.length} folders and ${rootList.items.length} files`);
+      console.log('Root folders:', rootList.prefixes.map(p => p.name));
+    } catch (rootError) {
+      console.error('Error accessing root folder:', rootError);
+      return res.status(500).json({ 
+        error: 'Firebase Storage Access Error', 
+        message: 'Could not access Firebase Storage root folder',
+        details: (rootError as Error).message
+      });
+    }
     
     // Firebase Storage에서 videos 폴더의 모든 파일 목록 가져오기
+    console.log('Attempting to access videos folder...');
     const videosRef = ref(storage, 'videos');
     const videosList = await listAll(videosRef);
     
@@ -181,6 +200,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
   } catch (error) {
     console.error('Error syncing with Firebase:', error);
-    return res.status(500).json({ error: 'Failed to sync with Firebase Storage' });
+    
+    // 더 자세한 오류 정보 제공
+    let errorMessage = 'Failed to sync with Firebase Storage';
+    let errorDetails = '';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      errorDetails = error.stack || '';
+    }
+    
+    return res.status(500).json({ 
+      error: 'Failed to sync with Firebase Storage',
+      message: errorMessage,
+      details: errorDetails
+    });
   }
 }
