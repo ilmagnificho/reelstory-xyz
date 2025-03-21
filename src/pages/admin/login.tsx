@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { GoogleButton } from '@/components/GoogleButton';
+import GoogleButton from '@/components/GoogleButton';
 
 const AdminLoginPage: React.FC = () => {
   const { user, signIn, initializing } = useAuth();
