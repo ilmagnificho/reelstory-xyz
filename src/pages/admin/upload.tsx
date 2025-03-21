@@ -352,11 +352,10 @@ const UploadPage: React.FC = () => {
         return;
       }
       
-      // If user is not logged in, redirect to login
+      // If user is not logged in, redirect to admin login
       if (!user) {
-        console.log('No user found, redirecting to login');
-        const redirectPath = encodeURIComponent('/admin/upload');
-        router.push(`/login?redirect=${redirectPath}`);
+        console.log('No user found, redirecting to admin login');
+        router.push('/admin/login');
         return;
       }
 
@@ -387,9 +386,9 @@ const UploadPage: React.FC = () => {
           setIsAdmin(true);
           setAuthError(null);
         } else {
-          console.log('User is not admin, showing error:', data.error);
-          setAuthError(data.error || 'You do not have admin privileges');
-          // Don't redirect immediately, show the error message instead
+          console.log('User is not admin, redirecting to admin login page');
+          // Redirect to admin login page instead of showing error
+          router.push('/admin/login');
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
