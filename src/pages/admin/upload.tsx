@@ -56,7 +56,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ label, accept, onChange, fileTy
 
     try {
       // Firebase 연결 확인
-      if (!storage || typeof storage.ref !== 'function') {
+      if (!storage) {
         throw new Error('Firebase Storage가 초기화되지 않았습니다. 환경 변수를 확인하세요.');
       }
 
