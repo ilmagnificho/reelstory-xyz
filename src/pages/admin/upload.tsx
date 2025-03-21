@@ -536,6 +536,51 @@ const UploadPage: React.FC = () => {
 
   // Show error if user is not an admin
   if (authError) {
+    const [requestingAdmin, setRequestingAdmin] = useState(false);
+    const [requestResult, setRequestResult] = useState<{success?: boolean; message?: string; error?: string} | null>(null);
+
+    const requestAdminPrivileges = async () => {
+      setRequestingAdmin(true);
+      setRequestResult(null);
+      
+      try {
+        const response = await fetch('/api/admin/check-admin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          setRequestResult({
+            success: true,
+            message: data.message || 'Admin privileges granted successfully!'
+          });
+          
+          // Refresh the page after a short delay to reflect the new admin status
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          setRequestResult({
+            success: false,
+            error: data.message || 'Failed to grant admin privileges'
+          });
+        }
+      } catch (error) {
+        console.error('Error requesting admin privileges:', error);
+        setRequestResult({
+          success: false,
+          error: 'An unexpected error occurred. Please try again.'
+        });
+      } finally {
+        setRequestingAdmin(false);
+      }
+    };
+    
     return (
       <>
         <Head>
@@ -550,15 +595,55 @@ const UploadPage: React.FC = () => {
                 이 페이지에 접근할 권한이 없습니다
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>인증 오류</AlertTitle>
                 <AlertDescription>{authError}</AlertDescription>
               </Alert>
-              <div className="mt-6">
+              
+              {requestResult && requestResult.success && (
+                <Alert className="bg-green-50 border-green-200 text-green-800">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertTitle>성공</AlertTitle>
+                  <AlertDescription>{requestResult.message}</AlertDescription>
+                </Alert>
+              )}
+              
+              {requestResult && !requestResult.success && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>오류</AlertTitle>
+                  <AlertDescription>{requestResult.error}</AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
+                <p>
+                  시스템에 아직 관리자가 없는 경우, 첫 번째 사용자가 관리자 권한을 요청할 수 있습니다.
+                  이미 관리자가 있는 경우, 기존 관리자에게 권한 부여를 요청해야 합니다.
+                </p>
+              </div>
+              
+              <div className="flex flex-col gap-2 mt-4">
+                <Button 
+                  onClick={requestAdminPrivileges} 
+                  disabled={requestingAdmin || (requestResult && requestResult.success)}
+                  className="w-full"
+                >
+                  {requestingAdmin ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      관리자 권한 요청 중...
+                    </>
+                  ) : (
+                    '관리자 권한 요청하기'
+                  )}
+                </Button>
+                
                 <Button 
                   onClick={() => router.push('/')} 
+                  variant="outline"
                   className="w-full"
                 >
                   홈으로 돌아가기
