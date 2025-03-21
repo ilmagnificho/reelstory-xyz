@@ -628,7 +628,7 @@ const UploadPage: React.FC = () => {
               <div className="flex flex-col gap-2 mt-4">
                 <Button 
                   onClick={requestAdminPrivileges} 
-                  disabled={requestingAdmin || (requestResult && requestResult.success)}
+                  disabled={requestingAdmin || (requestResult?.success === true)}
                   className="w-full"
                 >
                   {requestingAdmin ? (
