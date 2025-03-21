@@ -282,8 +282,12 @@ const UploadPage: React.FC = () => {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Track if the component is still mounted
+    let isMounted = true;
+    
     const checkAdminStatus = async () => {
       // Don't do anything while authentication is initializing
       if (initializing) {
@@ -293,7 +297,8 @@ const UploadPage: React.FC = () => {
       // If user is not logged in, redirect to login
       if (!user) {
         console.log('No user found, redirecting to login');
-        router.push('/login?redirect=/admin/upload');
+        const redirectPath = encodeURIComponent('/admin/upload');
+        router.push(`/login?redirect=${redirectPath}`);
         return;
       }
 
@@ -301,9 +306,11 @@ const UploadPage: React.FC = () => {
         console.log('Checking admin status for user:', user.id);
         
         // For development purposes, you can uncomment this to bypass admin check
-        // setIsAdmin(true);
-        // setLoading(false);
-        // return;
+        // if (process.env.NODE_ENV === 'development') {
+        //   setIsAdmin(true);
+        //   setLoading(false);
+        //   return;
+        // }
         
         const response = await fetch('/api/admin/check-admin', {
           method: 'GET',
@@ -313,24 +320,37 @@ const UploadPage: React.FC = () => {
           credentials: 'include',
         });
 
+        if (!isMounted) return;
+
         const data = await response.json();
 
         if (response.ok) {
           console.log('User is admin, allowing access');
           setIsAdmin(true);
+          setAuthError(null);
         } else {
-          console.log('User is not admin, redirecting to home:', data.error);
-          router.push('/');
+          console.log('User is not admin, showing error:', data.error);
+          setAuthError(data.error || 'You do not have admin privileges');
+          // Don't redirect immediately, show the error message instead
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
-        router.push('/');
+        if (isMounted) {
+          setAuthError('Failed to verify admin status. Please try again.');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkAdminStatus();
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
   }, [user, initializing, router]);
   const [dramas, setDramas] = useState<Drama[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -438,7 +458,62 @@ const UploadPage: React.FC = () => {
     }
   };
 
-  // 관리자 전용 페이지
+  // Show loading state while checking authentication
+  if (initializing || loading) {
+    return (
+      <>
+        <Head>
+          <title>관리자 - 비디오 업로드</title>
+        </Head>
+        <div className="container max-w-2xl py-10">
+          <h1 className="text-3xl font-bold mb-6">관리자 페이지</h1>
+          <div className="flex flex-col items-center justify-center p-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 mb-4"></div>
+            <p className="text-muted-foreground">인증 확인 중...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Show error if user is not an admin
+  if (authError) {
+    return (
+      <>
+        <Head>
+          <title>관리자 - 접근 거부</title>
+        </Head>
+        <div className="container max-w-2xl py-10">
+          <h1 className="text-3xl font-bold mb-6">관리자 페이지</h1>
+          <Card className="border-red-200">
+            <CardHeader>
+              <CardTitle className="text-red-600">접근 거부</CardTitle>
+              <CardDescription>
+                이 페이지에 접근할 권한이 없습니다
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>인증 오류</AlertTitle>
+                <AlertDescription>{authError}</AlertDescription>
+              </Alert>
+              <div className="mt-6">
+                <Button 
+                  onClick={() => router.push('/')} 
+                  className="w-full"
+                >
+                  홈으로 돌아가기
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  // Admin page content
   return (
     <>
       <Head>

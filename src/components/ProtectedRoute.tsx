@@ -11,11 +11,12 @@ const publicRoutes = [
   '/magic-link-login',
   '/videos', // New public route for video browsing
   '/dashboard', // Allow dashboard access for development
-  '/auth/callback' // Add callback route to prevent redirect loops
+  '/auth/callback', // Add callback route to prevent redirect loops
+  '/error' // Error page
 ];
 
 // Development mode flag - allows bypassing authentication for testing
-const DEV_MODE = process.env.NODE_ENV === 'development';
+const DEV_MODE = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_CO_DEV_ENV === 'preview';
 
 // Check if a route is an admin route
 const isAdminRoute = (path: string) => {
@@ -28,8 +29,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const [redirectAttempted, setRedirectAttempted] = useState(false);
 
   useEffect(() => {
-    // Skip during initial loading or if in development mode
-    if (initializing || DEV_MODE) return;
+    // Skip during initial loading
+    if (initializing) return;
     
     // Prevent redirect loops by checking if we've already attempted a redirect
     if (redirectAttempted) return;
@@ -37,10 +38,18 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     // If user is not logged in and trying to access a protected route
     if (!user && !publicRoutes.includes(router.pathname) && !router.pathname.includes('/auth/')) {
       console.log('User not authenticated, redirecting to login');
+      
       // Save the intended destination for redirect after login
       const redirectPath = encodeURIComponent(router.asPath);
       setRedirectAttempted(true);
-      router.push(`/login?redirect=${redirectPath}`);
+      
+      // For admin routes, we need to ensure the redirect is properly handled
+      if (isAdminRoute(router.pathname)) {
+        console.log('Admin route detected, setting specific redirect');
+        router.push(`/login?redirect=${redirectPath}`);
+      } else {
+        router.push(`/login?redirect=${redirectPath}`);
+      }
     }
     
     // Admin routes are handled separately in their respective pages
@@ -52,6 +61,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     setRedirectAttempted(false);
   }, [router.pathname]);
 
+  // Show loading state during initialization
   if (initializing) {
     return (
       <div className="min-h-screen flex items-center justify-center">

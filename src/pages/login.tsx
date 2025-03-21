@@ -33,9 +33,20 @@ const LoginPage = () => {
       await signIn(email, password);
       console.log('Login successful, redirecting to:', redirectPath);
       
+      // Decode the redirect path if it's URL encoded
+      let decodedRedirectPath = redirectPath;
+      try {
+        if (redirectPath.includes('%2F')) {
+          decodedRedirectPath = decodeURIComponent(redirectPath);
+          console.log('Decoded redirect path:', decodedRedirectPath);
+        }
+      } catch (decodeError) {
+        console.error('Error decoding redirect path:', decodeError);
+      }
+      
       // Add a small delay before redirecting to ensure auth state is updated
       setTimeout(() => {
-        router.push(redirectPath);
+        router.push(decodedRedirectPath);
       }, 500);
     } catch (error) {
       console.error(error);

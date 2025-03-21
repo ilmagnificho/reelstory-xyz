@@ -1,5 +1,5 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getStorage } from 'firebase/storage';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 // Firebase 설정
 // 참고: 실제 값은 환경 변수에서 가져옵니다
@@ -12,25 +12,50 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Firebase 초기화 (중복 초기화 방지)
-let app;
-if (!getApps().length) {
-  console.log('Initializing Firebase app with config:', {
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-  });
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApps()[0];
+// 환경 변수 확인 로그
+const missingVars = [];
+if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) missingVars.push('NEXT_PUBLIC_FIREBASE_API_KEY');
+if (!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN) missingVars.push('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN');
+if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) missingVars.push('NEXT_PUBLIC_FIREBASE_PROJECT_ID');
+if (!process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET) missingVars.push('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET');
+if (!process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID) missingVars.push('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID');
+if (!process.env.NEXT_PUBLIC_FIREBASE_APP_ID) missingVars.push('NEXT_PUBLIC_FIREBASE_APP_ID');
+
+if (missingVars.length > 0) {
+  console.warn(`Firebase environment variables are missing: ${missingVars.join(', ')}`);
 }
 
-// Firebase Storage 초기화
-const storage = getStorage(app);
+// Firebase 초기화 (중복 초기화 방지)
+let app: FirebaseApp;
+let storage: FirebaseStorage;
 
-// 환경 변수 확인 로그
-if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 
-    !process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET) {
-  console.warn('Firebase environment variables are missing or incomplete');
+try {
+  if (!getApps().length) {
+    console.log('Initializing Firebase app with config:', {
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    });
+    
+    // Validate required config
+    if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.storageBucket) {
+      throw new Error('Missing required Firebase configuration');
+    }
+    
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApps()[0];
+  }
+
+  // Firebase Storage 초기화
+  storage = getStorage(app);
+  
+  console.log('Firebase initialized successfully');
+} catch (error) {
+  console.error('Firebase initialization error:', error);
+  // Create fallback objects to prevent app from crashing
+  // These will throw appropriate errors when used
+  app = {} as FirebaseApp;
+  storage = {} as FirebaseStorage;
 }
 
 export { storage, app };
