@@ -55,12 +55,23 @@ const FileUpload: React.FC<FileUploadProps> = ({ label, accept, onChange, fileTy
     setError(null);
 
     try {
+      // Firebase 연결 확인
+      if (!storage || typeof storage.ref !== 'function') {
+        throw new Error('Firebase Storage가 초기화되지 않았습니다. 환경 변수를 확인하세요.');
+      }
+
+      // 파일 크기 검증 (100MB 이하)
+      const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`파일 크기가 너무 큽니다. 최대 100MB까지 업로드 가능합니다. (현재: ${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
+      }
+
       // Firebase Storage에 파일 업로드
       const timestamp = Date.now();
       const fileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_'); // 파일명 안전하게 변경
       const storageRef = ref(storage, `${fileType}s/${timestamp}-${fileName}`);
       
-      console.log(`Uploading ${fileType} to Firebase Storage:`, storageRef);
+      console.log(`Firebase Storage에 ${fileType} 업로드 중:`, storageRef.fullPath);
       
       const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -69,15 +80,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ label, accept, onChange, fileTy
         (snapshot) => {
           // 업로드 진행 상황 업데이트
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log(`Upload progress: ${progress.toFixed(2)}%`);
+          console.log(`업로드 진행: ${progress.toFixed(2)}%`);
           setProgress(progress);
         },
         (error: any) => {
           // 업로드 에러 처리
-          console.error('Upload error:', error);
+          console.error('업로드 오류:', error);
+          
+          // Firebase 오류 코드에 따른 상세 메시지
           let errorMessage = '파일 업로드 중 오류가 발생했습니다';
           
-          // Firebase 에러 코드에 따른 상세 메시지
           if (error.code) {
             switch (error.code) {
               case 'storage/unauthorized':
@@ -100,13 +112,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ label, accept, onChange, fileTy
         async () => {
           // 업로드 완료 후 다운로드 URL 가져오기
           try {
-            console.log('Upload completed, getting download URL...');
+            console.log('업로드 완료, 다운로드 URL 가져오는 중...');
             const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-            console.log('Download URL:', downloadUrl);
+            console.log('다운로드 URL:', downloadUrl);
             setUrl(downloadUrl);
             onChange(downloadUrl);
           } catch (urlError) {
-            console.error('Error getting download URL:', urlError);
+            console.error('다운로드 URL 가져오기 오류:', urlError);
             setError('파일 URL을 가져오는 중 오류가 발생했습니다');
           } finally {
             setUploading(false);
@@ -114,8 +126,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ label, accept, onChange, fileTy
         }
       );
     } catch (error) {
-      console.error('Upload initialization error:', error);
-      setError('파일 업로드를 시작할 수 없습니다. Firebase 설정을 확인해주세요.');
+      console.error('업로드 초기화 오류:', error);
+      setError(error instanceof Error ? error.message : '파일 업로드를 시작할 수 없습니다. Firebase 설정을 확인해주세요.');
       setUploading(false);
     }
   };
