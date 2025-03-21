@@ -6,25 +6,27 @@ import { useAuth } from '@/contexts/AuthContext'
 export default function AuthCallback() {
   const router = useRouter()
   const supabase = createClient()
+  const { createUser } = useAuth(); // 올바른 위치에서 훅 사용
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const handleAuthStateChange = async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         try {
-          const { createUser } = useAuth();
           await createUser(session.user);
           router.push('/dashboard');
         } catch (error) {
           console.error('Error creating user:', error);
-          // You might want to handle this error more gracefully
+          router.push('/error');
         }
       }
-    });
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
     return () => {
-      authListener.subscription.unsubscribe()
+      authListener.subscription.unsubscribe();
     }
-  }, [router])
+  }, [router, createUser, supabase.auth]);
 
   return null
 }

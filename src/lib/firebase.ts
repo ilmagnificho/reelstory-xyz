@@ -2,7 +2,6 @@ import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 // Firebase 설정
-// 참고: 실제 값은 환경 변수에서 가져옵니다
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
@@ -12,62 +11,67 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || ''
 };
 
-// 환경 변수 확인 로그
-const missingVars: string[] = [];
-if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) missingVars.push('NEXT_PUBLIC_FIREBASE_API_KEY');
-if (!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN) missingVars.push('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN');
-if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) missingVars.push('NEXT_PUBLIC_FIREBASE_PROJECT_ID');
-if (!process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET) missingVars.push('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET');
-if (!process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID) missingVars.push('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID');
-if (!process.env.NEXT_PUBLIC_FIREBASE_APP_ID) missingVars.push('NEXT_PUBLIC_FIREBASE_APP_ID');
+// 필수 환경 변수 확인
+const validateConfig = () => {
+  const requiredVars = [
+    'NEXT_PUBLIC_FIREBASE_API_KEY',
+    'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+    'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'
+  ];
+  
+  const missingVars = requiredVars.filter(
+    varName => !process.env[varName]
+  );
+  
+  if (missingVars.length > 0) {
+    console.error(`필수 Firebase 환경 변수가 없습니다: ${missingVars.join(', ')}`);
+    return false;
+  }
+  
+  return true;
+};
 
-if (missingVars.length > 0) {
-  console.warn(`Firebase environment variables are missing: ${missingVars.join(', ')}`);
-}
-
-// Firebase 초기화 (중복 초기화 방지)
 let app: FirebaseApp;
 let storage: FirebaseStorage;
 
 try {
+  const isConfigValid = validateConfig();
+  
+  if (!isConfigValid) {
+    throw new Error('Firebase 설정이 유효하지 않습니다. 환경 변수를 확인하세요.');
+  }
+  
   if (!getApps().length) {
-    console.log('Initializing Firebase app with config:', {
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    });
-    
-    // Validate required config
-    if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.storageBucket) {
-      throw new Error('Missing required Firebase configuration');
-    }
-    
+    console.log('Firebase 앱 초기화 중...');
     app = initializeApp(firebaseConfig);
+    console.log('Firebase 앱 초기화 완료');
   } else {
     app = getApps()[0];
+    console.log('기존 Firebase 앱 사용');
   }
 
   // Firebase Storage 초기화
   storage = getStorage(app);
+  console.log(`Firebase Storage 초기화 완료. 버킷: ${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}`);
   
-  // 스토리지 버킷 정보 로깅
-  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-  console.log(`Firebase initialized successfully. Storage bucket: ${bucket}`);
-  
-  // 환경 변수 확인
-  if (typeof window === 'undefined') {
-    // 서버 사이드에서만 실행
-    console.log('Firebase Storage configuration check:');
-    console.log(`- API Key: ${firebaseConfig.apiKey ? 'Set' : 'Missing'}`);
-    console.log(`- Auth Domain: ${firebaseConfig.authDomain ? 'Set' : 'Missing'}`);
-    console.log(`- Project ID: ${firebaseConfig.projectId}`);
-    console.log(`- Storage Bucket: ${firebaseConfig.storageBucket}`);
-  }
 } catch (error) {
-  console.error('Firebase initialization error:', error);
-  // Create fallback objects to prevent app from crashing
-  // These will throw appropriate errors when used
-  app = {} as FirebaseApp;
-  storage = {} as FirebaseStorage;
+  console.error('Firebase 초기화 오류:', error);
+  // 개발 환경에서 폴백 객체 생성
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('개발 환경에서 임시 Firebase 객체를 생성합니다.');
+    // @ts-ignore - 개발 목적으로만 사용
+    app = { name: 'fallback-app' } as FirebaseApp;
+    // @ts-ignore - 개발 목적으로만 사용
+    storage = {
+      ref: () => ({
+        put: () => Promise.reject(new Error('Firebase Storage가 초기화되지 않았습니다')),
+        getDownloadURL: () => Promise.reject(new Error('Firebase Storage가 초기화되지 않았습니다')),
+      }),
+    } as FirebaseStorage;
+  } else {
+    // 프로덕션에서는 실제 객체 필요
+    throw error;
+  }
 }
 
 export { storage, app };
