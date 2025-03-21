@@ -50,7 +50,7 @@ try {
   storage = getStorage(app);
   
   // 스토리지 버킷 정보 로깅
-  const bucket = storage.bucket || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
   console.log(`Firebase initialized successfully. Storage bucket: ${bucket}`);
   
   // 환경 변수 확인
